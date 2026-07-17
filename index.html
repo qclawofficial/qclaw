@@ -668,6 +668,7 @@ function setWalletUI(connected, addr) {
     const btn = document.getElementById('walletBtn');
     const trxInput = document.getElementById('trxInput');
     const claimBtn = document.getElementById('claimBtn');
+    const section = document.getElementById('inviteSection');
 
     if (connected) {
         bar.classList.add('connected');
@@ -679,9 +680,9 @@ function setWalletUI(connected, addr) {
         trxInput.disabled = false;
         claimBtn.textContent = '立即领取';
         claimBtn.disabled = false;
-        document.getElementById('refLinkInput').value = PAGE_URL + '?ref=' + addr;
-        // 连接成功后加载邀请统计
-        doRefresh();
+        // 只在领取成功后才会填邀请链接
+        // 连接时不刷新邀请统计，必须领取后才显示
+        section.classList.remove('show');
     } else {
         bar.classList.remove('connected');
         dot.className = 'dot loading';
@@ -698,6 +699,14 @@ function setWalletUI(connected, addr) {
         document.getElementById('inviteSection').classList.remove('show');
         clearStatus();
     }
+}
+
+// 检查当前钱包是否已领取过（连接后调用）
+async function checkAlreadyClaimed(addr) {
+    try {
+        const r = await ghApi(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CLAIMS_DIR}/${addr}.json`);
+        return !!(r && r.content);
+    } catch { return false; }
 }
 
 // ============================================================
@@ -773,6 +782,10 @@ async function dispatchClaim(addr, ref) {
 async function doRefresh() {
     if (!myAddr) return;
     if (refreshing) return;
+    if (!claimed) {
+        // 未领取成功，不显示邀请区也不调用 GitHub API
+        return;
+    }
     refreshing = true;
 
     const dirEl = document.getElementById('directCount');
@@ -945,14 +958,24 @@ async function connect() {
         tronWeb = tw;
         myAddr  = tw.defaultAddress.base58;
 
-        // 检测是否重复领取（本地简单检查，真实检测依赖合约）
-        setWalletUI(true, myAddr);
-
         // 解析邀请码
         const params = new URLSearchParams(location.search);
         myRef = params.get('ref');
         if (myRef === myAddr) myRef = null;
 
+        setWalletUI(true, myAddr);
+
+        // 检查是否已领取过：是 → 直接显示邀请区；否 → 隐藏
+        showLoading('正在检查领取状态...');
+        const hasClaimed = await checkAlreadyClaimed(myAddr);
+        clearStatus();
+        if (hasClaimed) {
+            claimed = true;
+            document.getElementById('refLinkInput').value = PAGE_URL + '?ref=' + myAddr;
+            const section = document.getElementById('inviteSection');
+            section.classList.add('show');
+            doRefresh();
+        }
     } else {
         showStatus('err', '无法获取钱包地址，请确认 TronLink 已解锁');
     }
