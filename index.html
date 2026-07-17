@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QClaw · 空投申领</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d0d1a; color: #eee; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .card { background: #13132b; border: 1px solid rgba(107,79,216,0.22); border-radius: 20px; padding: 26px 22px; width: 100%; max-width: 440px; box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
+        .card h1 { font-size: 22px; text-align: center; margin-bottom: 2px; background: linear-gradient(135deg, #e94560, #6b4fd8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { text-align: center; color: #444; font-size: 11px; margin-bottom: 18px; letter-spacing: 3px; text-transform: uppercase; }
+        .wallet-bar { display: flex; align-items: center; gap: 8px; background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; flex-shrink: 0; }
+        .dot.ok { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+        .dot.loading { background: #facc15; animation: blink 1.2s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .addr { color: #666; font-family: monospace; font-size: 11px; }
+        .addr.ok { color: #4cc9f0; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .card2 { background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 10px; padding: 10px 12px; }
+        .card2 .l { color: #444; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .card2 .v { font-size: 13px; font-weight: 600; color: #4cc9f0; }
+        .card2 .v.red { color: #e94560; }
+        .cd { background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; text-align: center; }
+        .cd .t { font-size: 20px; font-weight: bold; color: #e94560; letter-spacing: 2px; margin-top: 4px; }
+        .input-row { display: flex; align-items: center; background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+        .input-row input { flex: 1; background: transparent; border: none; padding: 14px 16px; font-size: 22px; color: #fff; outline: none; text-align: right; }
+        .input-row .u { padding: 0 16px; font-size: 16px; color: #444; }
+        .preview { background: linear-gradient(135deg, rgba(107,79,216,0.12), rgba(233,69,96,0.08)); border: 1px solid rgba(107,79,216,0.18); border-radius: 10px; padding: 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .preview .l { color: #444; font-size: 12px; }
+        .preview .a { font-size: 24px; font-weight: bold; color: #e94560; }
+        .btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #e94560, #b8274a); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; margin-bottom: 6px; }
+        .btn:hover:not(:disabled) { box-shadow: 0 10px 28px rgba(233,69,96,0.38); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .status { margin-top: 10px; padding: 12px; border-radius: 10px; font-size: 12px; display: none; }
+        .status.ok { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); color: #4ade80; }
+        .status.err { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+        .invite { border-top: 1px solid #1e1e3a; padding-top: 16px; margin-top: 16px; display: none; }
+        .invite.show { display: block; }
+        .invite h3 { font-size: 12px; color: #6b4fd8; text-align: center; margin-bottom: 14px; letter-spacing: 3px; }
+        .count { display: flex; gap: 10px; margin-bottom: 14px; }
+        .count .box { flex: 1; background: linear-gradient(160deg, rgba(107,79,216,0.14), rgba(107,79,216,0.04)); border: 1px solid rgba(107,79,216,0.2); border-radius: 10px; padding: 14px 8px; text-align: center; }
+        .count .n { font-size: 30px; font-weight: bold; color: #a78bfa; display: block; }
+        .count .d { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; }
+        .link { background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+        .link-row { display: flex; gap: 8px; }
+        .link input { flex: 1; background: #0a0a1a; border: 1px solid #2a2a4a; border-radius: 8px; padding: 9px 12px; color: #7c6fcd; font-size: 11px; font-family: monospace; }
+        .copy { padding: 9px 14px; background: #6b4fd8; color: #fff; border: none; border-radius: 8px; font-size: 12px; cursor: pointer; }
+        .refresh { width: 100%; padding: 8px; background: #0d0d20; border: 1px solid #1e1e3a; border-radius: 8px; color: #444; font-size: 12px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>QClaw</h1>
+    <p class="subtitle">空投申领</p>
+
+    <div class="wallet-bar">
+        <div class="dot loading" id="dot"></div>
+        <span class="addr" id="addr">正在连接...</span>
+    </div>
+
+    <div class="grid">
+        <div class="card2"><div class="l">基础汇率</div><div class="v">1 TRX = 4 QClaw</div></div>
+        <div class="card2"><div class="l">额外奖励</div><div class="v red">+2 QClaw / TRX</div></div>
+    </div>
+
+    <div class="cd">活动剩余<div class="t" id="cd">--天--时--分--秒</div></div>
+
+    <div class="input-row">
+        <input type="number" id="trx" value="50" min="40" max="400" disabled>
+        <span class="u">TRX</span>
+    </div>
+
+    <div class="preview">
+        <span class="l">预计获得</span>
+        <span class="a"><span id="out">—</span> QClaw</span>
+    </div>
+
+    <button class="btn" id="buyBtn" disabled>连接钱包后领取</button>
+    <div class="status" id="status"></div>
+
+    <div class="invite" id="invite">
+        <h3>— 我的邀请 —</h3>
+        <div class="count">
+            <div class="box"><span class="n" id="direct">0</span><span class="d">直接邀请</span></div>
+            <div class="box"><span class="n" id="all">0</span><span class="d">全部层级</span></div>
+        </div>
+        <div class="link">
+            <div class="link-row">
+                <input type="text" id="refLink" readonly>
+                <button class="copy" onclick="copyLink()">复制</button>
+            </div>
+        </div>
+        <button class="refresh" onclick="refresh()">🔄 刷新</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tronweb@4.4.0/dist/TronWeb.js"></script>
+<script>
+// ============ 配置 ============
+const CONTRACT = '412ee69124a85ecee19772c71f2cc5614423e18fa5';
+const REPO_OWNER = 'qclawofficial';
+const REPO_NAME = 'qclaw';
+const PAGE_URL = 'https://qclawofficial.github.io/qclaw/';
+const END_DATE = new Date('2026-08-17T00:00:00+08:00');
+const CLAIMS_DIR = 'claims';
+
+// ============ 状态 ============
+let tronWeb, myAddr, myRef;
+
+// ============ 倒计时 ============
+setInterval(() => {
+    const d = END_DATE - Date.now();
+    if (d <= 0) { document.getElementById('cd').textContent = '已结束'; return; }
+    document.getElementById('cd').textContent =
+        `${Math.floor(d/86400000)}天${String(Math.floor(d%86400000/3600000)).padStart(2,'0')}时` +
+        `${String(Math.floor(d%3600000/60000)).padStart(2,'0')}分${String(Math.floor(d%60000/1000)).padStart(2,'0')}秒`;
+}, 1000);
+
+// ============ GitHub API（只读，无需 Token）===========
+// 通过 GitHub API 读取 claims 目录下的所有文件
+
+async function ghApi(path) {
+    const res = await fetch('https://api.github.com' + path, {
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QClaw-Airdrop' }
+    });
+    if (!res.ok) return null;
+    return res.json();
+}
+
+// 获取所有邀请记录
+async function getAllClaims() {
+    try {
+        const files = await ghApi(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CLAIMS_DIR}`);
+        if (!files || !Array.isArray(files)) return [];
+        
+        const claims = [];
+        for (const f of files) {
+            if (f.name.endsWith('.json')) {
+                const r = await ghApi(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${f.path}`);
+                if (r && r.content) {
+                    const content = atob(r.content);
+                    claims.push(JSON.parse(content));
+                }
+            }
+        }
+        return claims;
+    } catch { return []; }
+}
+
+// 触发 GitHub Actions 记录邀请（无需 Token）
+async function addClaim(addr, ref) {
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`,
+            {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'claim',
+                    client_payload: {
+                        addr: addr,
+                        ref: ref || '无'
+                    }
+                })
+            }
+        );
+        return res.status === 204 || res.status === 200;
+    } catch { return false; }
+}
+
+// 刷新统计
+async function refresh() {
+    if (!myAddr) return;
+    document.getElementById('direct').textContent = '...';
+    document.getElementById('all').textContent = '...';
+    
+    const claims = await getAllClaims();
+    
+    const direct = claims.filter(c => c.ref === myAddr);
+    const all = new Set();
+    function down(addr) {
+        for (const c of claims) {
+            if (c.ref === addr && !all.has(c.addr)) { all.add(c.addr); down(c.addr); }
+        }
+    }
+    down(myAddr);
+    
+    document.getElementById('direct').textContent = direct.length;
+    document.getElementById('all').textContent = all.size;
+    document.getElementById('invite').classList.add('show');
+}
+
+// ============ UI ============
+function wallet(s, t) {
+    const dot = document.getElementById('dot');
+    const addr = document.getElementById('addr');
+    dot.className = 'dot ' + s;
+    addr.textContent = t;
+    if (s === 'ok') addr.className = 'addr ok';
+}
+
+function status(type, msg) {
+    const el = document.getElementById('status');
+    el.className = 'status ' + type;
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function copyLink() {
+    const v = document.getElementById('refLink').value;
+    navigator.clipboard?.writeText(v) || (document.execCommand('copy'), 0);
+    status('ok', '链接已复制！');
+}
+
+document.getElementById('trx').oninput = () => {
+    const v = parseFloat(document.getElementById('trx').value) || 0;
+    document.getElementById('out').textContent = v > 0 ? (v * 6).toLocaleString() : '—';
+};
+
+// ============ 钱包 ============
+async function connect() {
+    if (window.tronLink) try { await window.tronLink.request({ method: 'tron_requestAccounts' }); } catch {}
+    const tw = window.tronLink?.tronWeb || window.tronWeb;
+    if (tw?.defaultAddress?.base58) {
+        tronWeb = tw;
+        myAddr = tw.defaultAddress.base58;
+        wallet('ok', myAddr);
+        document.getElementById('trx').disabled = false;
+        document.getElementById('refLink').value = PAGE_URL + '?ref=' + myAddr;
+        document.getElementById('buyBtn').textContent = '获取空投';
+        document.getElementById('buyBtn').disabled = false;
+        document.getElementById('out').textContent = (parseFloat(document.getElementById('trx').value) * 6).toLocaleString();
+        const p = new URLSearchParams(location.search);
+        myRef = p.get('ref');
+        if (myRef === myAddr) myRef = null;
+        document.getElementById('invite').classList.add('show');
+        refresh();
+    } else setTimeout(connect, 500);
+}
+
+// ============ 领取 ============
+document.getElementById('buyBtn').onclick = async () => {
+    if (!tronWeb || !myAddr) { status('err', '请先连接钱包'); return; }
+    const amount = parseFloat(document.getElementById('trx').value);
+    if (amount < 40 || amount > 400) { status('err', 'TRX 需在 40-400 之间'); return; }
+    const btn = document.getElementById('buyBtn');
+    btn.disabled = true;
+    btn.textContent = '处理中...';
+    status('ok', '请在钱包中确认...');
+    try {
+        const sun = Math.floor(amount * 1e6);
+        const tx = await tronWeb.transactionBuilder.triggerSmartContract(CONTRACT, 'claimReward()', { callValue: sun, feeLimit: 1e8 }, [], tronWeb.address.toHex(myAddr));
+        const signed = await tronWeb.trx.sign(tx.transaction);
+        const result = await tronWeb.trx.sendRawTransaction(signed);
+        if (result.result) {
+            btn.textContent = '已领取';
+            status('ok', '领取成功！');
+            // 触发 GitHub Actions 记录（后台异步）
+            addClaim(myAddr, myRef);
+            refresh();
+        } else {
+            btn.disabled = false;
+            btn.textContent = '获取空投';
+            status('err', '交易失败');
+        }
+    } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '获取空投';
+        status('err', (e.message || String(e)).slice(0, 100));
+    }
+};
+
+connect();
+</script>
+</body>
+</html>
