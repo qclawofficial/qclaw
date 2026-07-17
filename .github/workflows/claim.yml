@@ -2,7 +2,10 @@ name: Record Claim
 
 on:
   repository_dispatch:
-    types: [claim-record]
+    types: [claim]
+
+permissions:
+  contents: write
 
 jobs:
   record:
@@ -13,12 +16,16 @@ jobs:
       - name: Record claim
         run: |
           mkdir -p claims
-          echo '${{ toJson(github.event.client_payload) }}' >> claims/records.jsonl
+          data='${{ toJson(github.event.client_payload) }}'
+          addr=$(echo "$data" | grep -o '"addr":"[^"]*"' | cut -d'"' -f4)
+          if [ -n "$addr" ]; then
+            echo "$data" > "claims/${addr}.json"
+          fi
           
       - name: Commit
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add claims/
-          git commit -m "Add claim record" || echo "No changes"
+          git diff --quiet && echo "No changes" || git commit -m "Add claim record"
           git push
