@@ -15,17 +15,31 @@ jobs:
       
       - name: Record claim
         run: |
-          mkdir -p claims
-          data='${{ toJson(github.event.client_payload) }}'
-          addr=$(echo "$data" | grep -o '"addr":"[^"]*"' | cut -d'"' -f4)
-          if [ -n "$addr" ]; then
-            echo "$data" > "claims/${addr}.json"
-          fi
+          python3 << 'EOF'
+          import json, os, subprocess
           
-      - name: Commit
+          payload = json.loads('${{ toJson(github.event.client_payload) }}')
+          addr = payload.get('addr', '')
+          
+          if not addr:
+            print('No addr in payload')
+            exit(0)
+          
+          os.makedirs('claims', exist_ok=True)
+          with open(f'claims/{addr}.json', 'w') as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+          
+          print(f'Recorded: {addr}')
+          EOF
+          
+      - name: Commit and push
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add claims/
-          git diff --quiet && echo "No changes" || git commit -m "Add claim record"
-          git push
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Add claim ${{ github.event.client_payload.addr }}"
+            git push
+          fi
