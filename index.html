@@ -120,8 +120,6 @@ setInterval(() => {
 }, 1000);
 
 // ============ GitHub API（只读，无需 Token）===========
-// 通过 GitHub API 读取 claims 目录下的所有文件
-
 async function ghApi(path) {
     const res = await fetch('https://api.github.com' + path, {
         headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'QClaw-Airdrop' }
@@ -135,14 +133,12 @@ async function getAllClaims() {
     try {
         const files = await ghApi(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${CLAIMS_DIR}`);
         if (!files || !Array.isArray(files)) return [];
-        
         const claims = [];
         for (const f of files) {
             if (f.name.endsWith('.json')) {
                 const r = await ghApi(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${f.path}`);
                 if (r && r.content) {
-                    const content = atob(r.content);
-                    claims.push(JSON.parse(content));
+                    claims.push(JSON.parse(atob(r.content)));
                 }
             }
         }
@@ -174,23 +170,35 @@ async function addClaim(addr, ref) {
     } catch { return false; }
 }
 
-// 刷新统计
+// 刷新统计（修复：只有 referrer 自己也领取成功才计入）
 async function refresh() {
     if (!myAddr) return;
     document.getElementById('direct').textContent = '...';
     document.getElementById('all').textContent = '...';
-    
+
     const claims = await getAllClaims();
-    
+
+    // 构建"已成功领取"地址集合（仅当 addr 有 claim 文件时才算）
+    const claimedSet = new Set(claims.map(c => c.addr));
+
+    // 直接邀请：ref 指向我
+    //（由于 down() 已经限制只沿已领取链路向下，直接邀请也天然满足 referrer 已领取的条件）
     const direct = claims.filter(c => c.ref === myAddr);
+
+    // 全部层级：递归向下
+    // 规则：只沿"已领取者"链路向下遍历
     const all = new Set();
     function down(addr) {
         for (const c of claims) {
-            if (c.ref === addr && !all.has(c.addr)) { all.add(c.addr); down(c.addr); }
+            if (c.ref === addr && claimedSet.has(addr) && !all.has(c.addr)) {
+                all.add(c.addr);
+                // 只有当前节点的 referrer 已领取，才继续向下递归
+                down(c.addr);
+            }
         }
     }
     down(myAddr);
-    
+
     document.getElementById('direct').textContent = direct.length;
     document.getElementById('all').textContent = all.size;
     document.getElementById('invite').classList.add('show');
@@ -261,7 +269,6 @@ document.getElementById('buyBtn').onclick = async () => {
         if (result.result) {
             btn.textContent = '已领取';
             status('ok', '领取成功！');
-            // 触发 GitHub Actions 记录（后台异步）
             addClaim(myAddr, myRef);
             refresh();
         } else {
