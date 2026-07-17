@@ -247,8 +247,6 @@ async function connect() {
         const p = new URLSearchParams(location.search);
         myRef = p.get('ref');
         if (myRef === myAddr) myRef = null;
-        document.getElementById('invite').classList.add('show');
-        refresh();
     } else setTimeout(connect, 500);
 }
 
@@ -269,6 +267,9 @@ document.getElementById('buyBtn').onclick = async () => {
         if (result.result) {
             btn.textContent = '已领取';
             status('ok', '领取成功！');
+            // 生成并显示邀请链接（仅在领取成功后）
+            document.getElementById('refLink').value = PAGE_URL + '?ref=' + myAddr;
+            document.getElementById('invite').classList.add('show');
             addClaim(myAddr, myRef);
             refresh();
         } else {
