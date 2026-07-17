@@ -1,0 +1,24 @@
+name: Record Claim
+
+on:
+  repository_dispatch:
+    types: [claim-record]
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Record claim
+        run: |
+          mkdir -p claims
+          echo '${{ toJson(github.event.client_payload) }}' >> claims/records.jsonl
+          
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add claims/
+          git commit -m "Add claim record" || echo "No changes"
+          git push
